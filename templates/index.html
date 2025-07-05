@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Follow Me Webapp</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css">
+    <style>
+        body { margin: 2rem; }
+        #feed { margin-top: 2rem; }
+        .user-card { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+        #cookie-notice { background: #f9f9a9; padding: 1rem; margin-bottom: 1rem; border-radius: 5px; }
+        #following-list { margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div id="cookie-notice">
+        <strong>Notice:</strong> This site remembers you using a simple cookie. No sensitive data is stored.
+    </div>
+    <div id="app">
+        <!-- User creation form -->
+        <form id="create-user-form" style="display:none;">
+            <h3>Create your profile</h3>
+            <label for="nickname">Nickname</label>
+            <input type="text" id="nickname" name="nickname" maxlength="32" required placeholder="Enter a memorable nickname">
+            <label for="origin">Where are you hiring me from? (Make it memorable!)</label>
+            <input type="text" id="origin" name="origin" maxlength="64" required placeholder="e.g. London, The Moon, etc.">
+            <button type="submit">Create User</button>
+        </form>
+
+        <!-- Main app content -->
+        <div id="main-content" style="display:none;">
+            <h2>Welcome, <span id="user-nickname"></span>!</h2>
+            <div id="feed">
+                <h4>All Users</h4>
+                <div id="users-feed"></div>
+                <button id="load-more" style="display:none;">Load More</button>
+            </div>
+        </div>
+    </div>
+    <script src="/static/main.js"></script>
+</body>
+</html> 
