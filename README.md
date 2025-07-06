@@ -1,0 +1,1 @@
+A simple feed type web-app for following other users. No unfollowing allowed! 
