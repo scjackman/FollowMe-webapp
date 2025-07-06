@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Show the alert after a short delay to allow rendering
         setTimeout(() => {
             alert("Notice: This site remembers you using a simple cookie. No sensitive data is stored.");
-        }, 1);
+        }, 1 );
     }
 });
 
@@ -178,7 +178,7 @@ function addFollowButtonListeners() {
     });
 }
 
-// Load more users (pagination)
+// Load more users (by pagination)
 async function loadMoreUsers() {
     if (hasMoreUsers) {
         await loadUsersFeed(currentPage + 1);

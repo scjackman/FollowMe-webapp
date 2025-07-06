@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, jsonify, make_response
 import uuid
-
-# Git test
+from firebase_config import initialize_firebase
 
 app = Flask(__name__)
+
+# Initialize Firebase on app startup
+initialize_firebase()
 
 # Simulated in-memory DB for users and userList
 users_db = {}
@@ -50,7 +52,7 @@ def create_user():
 
     # Return a response with the userID and a cookie set with the userID
     resp = make_response(jsonify({'success': True, 'userID': user_id}))
-    resp.set_cookie('userID', user_id, samesite='Lax')
+    resp.set_cookie('userID', user_id, max_age=60*60*24*365) # 1 year expiration
     return resp
 
 # Get the user info for the current user
