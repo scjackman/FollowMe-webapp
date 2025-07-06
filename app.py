@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify, make_response
 import uuid
 
+# Git test
+
 app = Flask(__name__)
 
 # Simulated in-memory DB for users and userList
@@ -20,7 +22,7 @@ def create_users(n):
         users_db[user_id] = user_obj
         user_list.append(user_id)   
 
-create_users(15)
+create_users(150)
             
 @app.route('/')
 def index():
@@ -120,8 +122,9 @@ def follow_user():
     # Add to following list if not already following
     if target_user_id not in users_db[user_id]['following']:
         users_db[user_id]['following'].append(target_user_id)
-    
-    return jsonify({'success': True})
+        return jsonify({'success': True})
+
+    return jsonify({'error': 'Already following user'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)

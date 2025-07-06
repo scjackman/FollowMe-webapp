@@ -32,6 +32,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         createUserForm.style.display = '';
         // Hide the main app content
         mainContent.style.display = 'none';
+
+        // Show the alert after a short delay to allow rendering
+        setTimeout(() => {
+            alert("Notice: This site remembers you using a simple cookie. No sensitive data is stored.");
+        }, 1);
     }
 });
 
