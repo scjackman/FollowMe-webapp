@@ -11,6 +11,19 @@
         .user-card { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #eee; }
         #cookie-notice { background: #f9f9a9; padding: 1rem; margin-bottom: 1rem; border-radius: 5px; }
         #following-list { margin-top: 2rem; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -19,8 +32,8 @@
         <form id="create-user-form" style="display:none;">
             <h3>Create your profile</h3>
             <label for="nickname">Nickname</label>
-            <input type="text" id="nickname" name="nickname" maxlength="32" required placeholder="Enter a memorable nickname">
-            <label for="origin">Where are you hiring me from? (Make it memorable!)</label>
+            <input type="text" id="nickname" name="nickname" maxlength="32" required placeholder="Enter your nickname here">
+            <label for="origin">Where are you based?</label>
             <input type="text" id="origin" name="origin" maxlength="64" required placeholder="e.g. London, The Moon, etc.">
             <button type="submit">Create User</button>
         </form>
@@ -30,8 +43,14 @@
             <h2>Welcome, <span id="user-nickname"></span>!</h2>
             <div id="feed">
                 <h4>All Users</h4>
+                <div id="spinner" style="display:none; text-align:center; margin: 1rem 0;">
+                    <div class="loader"></div>
+                </div>
                 <div id="users-feed"></div>
                 <button id="load-more" style="display:none;">Load More</button>
+                <div id="load-more-spinner" style="display:none; text-align:center; margin: 1rem 0;">
+                    <div class="loader"></div>
+                </div>
             </div>
         </div>
     </div>

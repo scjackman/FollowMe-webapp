@@ -97,6 +97,8 @@ async function loadUserInfo() {
 
 // Load and display the users feed
 async function loadUsersFeed(page = 1) {
+    const spinner = document.getElementById(page === 1 ? 'spinner' : 'load-more-spinner');
+    if (spinner) spinner.style.display = 'block';
     try {
         const response = await fetch(`/api/users_feed?page=${page}`);
         if (response.ok) {
@@ -111,6 +113,8 @@ async function loadUsersFeed(page = 1) {
         }
     } catch (error) {
         console.error('Error loading users feed:', error);
+    } finally {
+        if (spinner) spinner.style.display = 'none';
     }
 }
 
@@ -124,12 +128,29 @@ function renderUsersFeed(users, clearExisting = false) {
     
     users.forEach(user => {
         const userCard = document.createElement('div');
+        let formattedTimeStamp = '00/00/00'
+        if (user.createdAt) {
+            const date = new Date(user.createdAt);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = String(date.getFullYear()).slice(-2);
+            formattedTimeStamp = `${day}/${month}/${year}`;
+        }
         userCard.className = 'user-card';
         userCard.innerHTML = `
-            <div>
-                <strong>${user.nickname}</strong>
-                <br>
-                <small>${user.origin || 'Unknown origin'}</small>
+            <div style="display: flex; align-items: center; flex: 1;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #888; margin-right: 1rem; flex-shrink: 0;">
+                    <span style="user-select: none;">👤</span>
+                </div>
+                <div style="display: flex; flex-direction: column;">
+                    <strong>${user.nickname}</strong>
+                    <small>
+                        ${user.origin || 'Unknown origin'}
+                        <span style="font-size: 0.8em;">•</span>
+                        ${formattedTimeStamp}
+                    </small>
+                    <small>Followers: ${user.followerCount}</small>
+                </div>
             </div>
             <button 
                 class="follow-btn" 
@@ -180,9 +201,11 @@ function addFollowButtonListeners() {
 
 // Load more users (by pagination)
 async function loadMoreUsers() {
+
     if (hasMoreUsers) {
         await loadUsersFeed(currentPage + 1);
     }
+
 }
 
 // Add event listener for load more button
