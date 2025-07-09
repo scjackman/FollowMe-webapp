@@ -187,7 +187,8 @@ def follow_user():
 if __name__ == '__main__':
     app.run(debug=True)
 
-#TODO: ui updates;
-    # 'Follow' button responsiveness (event handlers)
-    # Turn into a card type layout
-    # Make the screen movements smoother when loading symbol visible    
+#TODO: 
+    # Improve the UI... it looks too compressed
+    # User pps - can these be random Avatars? 
+    # Make the loading symbols cleaner 
+

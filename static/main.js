@@ -120,22 +120,17 @@ async function loadUsersFeed(page = 1) {
 
 // Render the users feed
 function renderUsersFeed(users, clearExisting = false) {
-    const feedContainer = document.getElementById('users-feed');
-    
+    const feedContainer = document.querySelector('.users-list');
+    if (!feedContainer) return;
+
     if (clearExisting) {
         feedContainer.innerHTML = '';
     }
     
     users.forEach(user => {
         const userCard = document.createElement('div');
-        let formattedTimeStamp = '00/00/00'
-        if (user.createdAt) {
-            const date = new Date(user.createdAt);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = String(date.getFullYear()).slice(-2);
-            formattedTimeStamp = `${day}/${month}/${year}`;
-        }
+        let formattedTimeStamp = formatTimestampUserCreatedAt(user)
+        
         userCard.className = 'user-card';
         userCard.innerHTML = `
             <div style="display: flex; align-items: center; flex: 1;">
@@ -153,7 +148,7 @@ function renderUsersFeed(users, clearExisting = false) {
                 </div>
             </div>
             <button 
-                class="follow-btn" 
+                class="btn btn-outline-secondary btn-sm follow-btn" 
                 data-user-id="${user.userID}"
                 ${user.isFollowing ? 'disabled' : ''}
             >
@@ -173,26 +168,56 @@ function addFollowButtonListeners() {
         button.addEventListener('click', async (e) => {
             const targetUserId = e.target.dataset.userId;
             if (e.target.disabled) return;
-            
+
+            // Find the follower count element in the same user card
+            const userCard = e.target.closest('.user-card');
+            const followerCountElem = userCard.querySelector('small:nth-child(3)');
+            // Extract the current follower count from the text
+            let followerCount = 0;
+            if (followerCountElem) {
+                const match = followerCountElem.textContent.match(/Followers: (\d+)/);
+                if (match) followerCount = parseInt(match[1], 10);
+            }
+
+            // Save previous state
+            const prevButtonText = e.target.textContent;
+            const prevDisabled = e.target.disabled;
+            const prevFollowerCount = followerCount;
+
+            // Optimistically update UI
+            e.target.disabled = true;
+            e.target.textContent = 'Following';
+            if (followerCountElem) {
+                followerCountElem.textContent = `Followers: ${followerCount + 1}`;
+            }
+
             try {
                 const response = await fetch('/api/follow_user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ targetUserID: targetUserId })
                 });
-                
-                if (response.ok) {
-                    // Update button state
-                    e.target.disabled = true;
-                    e.target.textContent = 'Following';
-                    
-                    // Reload following list and feed to reflect changes
-                    await loadUserInfo();
-                } else {
+
+                if (!response.ok) {
+                    // Revert UI on error
+                    e.target.disabled = prevDisabled;
+                    e.target.textContent = prevButtonText;
+                    if (followerCountElem) {
+                        followerCountElem.textContent = `Followers: ${prevFollowerCount}`;
+                    }
                     const data = await response.json();
                     alert(data.error || 'Failed to follow user');
+                } else {
+                    // Optionally, reload user info/feed if you want to sync with backend
+                    // await loadUserInfo();
                 }
             } catch (error) {
+                // Revert UI on network error
+                e.target.disabled = prevDisabled;
+                e.target.textContent = prevButtonText;
+                if (followerCountElem) {
+                    followerCountElem.textContent = `Followers: ${prevFollowerCount}`;
+                }
                 alert('Network error. Please try again.');
             }
         });
@@ -215,3 +240,15 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMoreBtn.addEventListener('click', loadMoreUsers);
     }
 }); 
+
+// Helper to format timestamp
+function formatTimestampUserCreatedAt(user) {
+    if (user.createdAt) {
+        const date = new Date(user.createdAt);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
+    }    
+    return '01/01/99'
+}
