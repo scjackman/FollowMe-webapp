@@ -199,5 +199,4 @@ if __name__ == '__main__':
 
 #TODO: 
     # User pps - can these be random Avatars? 
-    # See TODOs above
 

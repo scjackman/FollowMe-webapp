@@ -1,13 +1,9 @@
 import os
 import firebase_admin
 from firebase_admin import credentials, firestore
-from dotenv import load_dotenv
-
-# Load environment variables from .env file (for local development)
-load_dotenv()
 
 def initialise_firebase():
-    """Initialize Firebase Admin SDK with credentials from environment variables"""
+    """Initialize Firebase Admin SDK with necessary credentials"""
     try:
         # Check if Firebase app is already initialized
         if not firebase_admin._apps:
