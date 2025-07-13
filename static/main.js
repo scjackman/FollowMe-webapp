@@ -13,13 +13,13 @@ function getCookie(name) {
 // Wait for the DOM to be fully loaded before running the script
 window.addEventListener('DOMContentLoaded', async () => {
     // Try to get the userID cookie
-    const userId = getCookie('userID');
+    const privateUserID = getCookie('privateUserID');
     // Get references to the form and main content sections
     const createUserForm = document.getElementById('create-user-form');
     const mainContent = document.getElementById('main-content');
 
-    if (userId) {
-        // If a userID cookie exists, the user is recognized
+    if (privateUserID) {
+        // If a privateUserID cookie exists, the user is recognized
         // Hide the user creation form
         createUserForm.style.display = 'none';
         // Show the main app content
@@ -27,7 +27,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Load user info and the feed from the backend
         await loadUserInfo();
     } else {
-        // If no userID cookie, the user is new or not recognized
+        // If no privateUserID cookie, the user is new or not recognized
         // Show the user creation form
         createUserForm.style.display = '';
         // Hide the main app content
@@ -106,10 +106,6 @@ async function loadUsersFeed(page = 1) {
             renderUsersFeed(data.users, page === 1);
             hasMoreUsers = data.hasMore;
             currentPage = data.page;
-            
-            // Show/hide load more button
-            const loadMoreBtn = document.getElementById('load-more');
-            loadMoreBtn.style.display = hasMoreUsers ? 'block' : 'none';
         }
     } catch (error) {
         console.error('Error loading users feed:', error);
@@ -124,7 +120,11 @@ function renderUsersFeed(users, clearExisting = false) {
     if (!feedContainer) return;
 
     if (clearExisting) {
-        feedContainer.innerHTML = '';
+        // Clear only the user cards container, not the entire feed container
+        const userCardsContainer = document.getElementById('user-cards-container');
+        if (userCardsContainer) {
+            userCardsContainer.innerHTML = '';
+        }
     }
     
     users.forEach(user => {
@@ -149,13 +149,18 @@ function renderUsersFeed(users, clearExisting = false) {
             </div>
             <button 
                 class="btn btn-outline-secondary btn-sm follow-btn" 
-                data-user-id="${user.userID}"
+                data-user-id="${user.publicUserID}"
                 ${user.isFollowing ? 'disabled' : ''}
             >
                 ${user.isFollowing ? 'Following' : 'Follow'}
             </button>
         `;
-        feedContainer.appendChild(userCard);
+        
+        // Append to the user cards container instead of the feed container
+        const userCardsContainer = document.getElementById('user-cards-container');
+        if (userCardsContainer) {
+            userCardsContainer.appendChild(userCard);
+        }
     });
     
     // Add event listeners to follow buttons
@@ -166,7 +171,7 @@ function renderUsersFeed(users, clearExisting = false) {
 function addFollowButtonListeners() {
     document.querySelectorAll('.follow-btn').forEach(button => {
         button.addEventListener('click', async (e) => {
-            const targetUserId = e.target.dataset.userId;
+            const targetUserID = e.target.dataset.userId;
             if (e.target.disabled) return;
 
             // Find the follower count element in the same user card
@@ -195,7 +200,7 @@ function addFollowButtonListeners() {
                 const response = await fetch('/api/follow_user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ targetUserID: targetUserId })
+                    body: JSON.stringify({ targetPublicUserID: targetUserID })
                 });
 
                 if (!response.ok) {
@@ -226,18 +231,48 @@ function addFollowButtonListeners() {
 
 // Load more users (by pagination)
 async function loadMoreUsers() {
-
     if (hasMoreUsers) {
         await loadUsersFeed(currentPage + 1);
     }
-
 }
 
-// Add event listener for load more button
+// Check if user has scrolled to bottom of the feed
+function isNearBottom() {
+    const usersList = document.querySelector('.users-list');
+    if (!usersList) return false;
+    
+    const scrollTop = usersList.scrollTop;
+    const scrollHeight = usersList.scrollHeight;
+    const clientHeight = usersList.clientHeight;
+    
+    // Load more when user is within 100px of the bottom
+    return (scrollTop + clientHeight) >= (scrollHeight - 100);
+}
+
+// Handle scroll events for infinite scroll
+function handleScroll() {
+    if (isNearBottom() && hasMoreUsers && !isLoading) {
+        loadMoreUsers();
+    }
+}
+
+// Track loading state to prevent multiple simultaneous requests
+let isLoading = false;
+
+// Load more users (by pagination) with loading state
+async function loadMoreUsers() {
+    if (hasMoreUsers && !isLoading) {
+        isLoading = true;
+        await loadUsersFeed(currentPage + 1);
+        isLoading = false;
+    }
+}
+
+// Add scroll event listener for infinite scroll
 document.addEventListener('DOMContentLoaded', () => {
-    const loadMoreBtn = document.getElementById('load-more');
-    if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', loadMoreUsers);
+    const usersList = document.querySelector('.users-list');
+    if (usersList) {
+        usersList.addEventListener('scroll', handleScroll);
     }
 }); 
 

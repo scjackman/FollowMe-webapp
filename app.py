@@ -1,7 +1,10 @@
 from flask import Flask, render_template, request, jsonify, make_response
 import uuid
+
 from firebase_config import initialise_firebase, get_firestore_client
-from firebase_admin import firestore  # Add this import for transactional
+from firebase_admin import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
+
 from datetime import datetime
 
 app = Flask(__name__)
@@ -11,9 +14,9 @@ initialise_firebase()
 db = get_firestore_client()
 
 # --- Firestore structure ---
-# Users are stored at users/[userID]
+# Users are stored at users/[privateUserID]
 USERS_COLLECTION = db.collection('users')
-# The user list is stored at users/userList (as a document with a userList array)
+# The user list is stored at users/userList (as a document with a userList array - a list of public IDs)
 USERLIST_DOC = db.collection('users').document('userList')
 
 # Ensure userList doc exists on startup
@@ -36,11 +39,14 @@ def create_user():
     if not nickname or not origin:
         return jsonify({'error': 'Nickname and origin are required.'}), 400
 
-    user_id = str(uuid.uuid4())
+    private_user_id = str(uuid.uuid4())
+    public_user_id = str(uuid.uuid4())
+
     user_obj = {
         'nickname': nickname,
         'origin': origin,
-        'userID': user_id,
+        'privateUserID': private_user_id,
+        'publicUserID': public_user_id,
         'following': [],
         'followerCount': 0,
         'createdAt': datetime.utcnow().isoformat() + 'Z'
@@ -50,41 +56,42 @@ def create_user():
 
     #Add user doc and update userList atomically
     @firestore.transactional
-    def create_user_transaction(transaction, user_id, user_obj):
+    def create_user_transaction(transaction, private_user_id, public_user_id, user_obj):
 
         # Get and update userList
         user_list_doc = USERLIST_DOC.get(transaction=transaction) # Reads must happen before writes
-        user_list = user_list_doc.to_dict().get('userList', []) if user_list_doc.exists else [] #TODO does this basically empty the list if the call fails for some reason? 
-        user_list.append(user_id)
+        user_list = user_list_doc.to_dict().get('userList', []) if user_list_doc.exists else [] 
+        user_list.append(public_user_id)
         transaction.set(USERLIST_DOC, {'userList': user_list})
 
         # Add user doc
-        user_doc_ref = USERS_COLLECTION.document(user_id)
+        user_doc_ref = USERS_COLLECTION.document(private_user_id)
         transaction.set(user_doc_ref, user_obj)
 
-    create_user_transaction(transaction, user_id, user_obj)
+    create_user_transaction(transaction, private_user_id, public_user_id, user_obj)
 
-    # Set userID cookie for client
-    resp = make_response(jsonify({'success': True, 'userID': user_id}))
-    resp.set_cookie('userID', user_id, max_age=60*60*24*365)  # 1 year expiration
+    # Set privateUserID cookie for client
+    resp = make_response(jsonify({'success': True, 'privateUserID': private_user_id}))
+    resp.set_cookie('privateUserID', private_user_id, max_age=60*60*24*365)  # 1 year expiration
     return resp
 
 @app.route('/api/user_info')
 def get_user_info():
     """Return info for the current user (from cookie)."""
-    user_id = request.cookies.get('userID')
-    if not user_id:
+    private_user_id = request.cookies.get('privateUserID')
+    if not private_user_id:
         return jsonify({'error': 'User not found'}), 404
 
     # Retrieve user document from Firestore and return to client if found
-    user_doc = USERS_COLLECTION.document(user_id).get()
+    user_doc = USERS_COLLECTION.document(private_user_id).get()
     if not user_doc.exists:
         return jsonify({'error': 'User not found'}), 404
     user = user_doc.to_dict()
     return jsonify({
         'nickname': user['nickname'],
         'origin': user['origin'],
-        'userID': user['userID'],
+        'privateUserID': user['privateUserID'],
+        'publicUserID': user['publicUserID'],
         'following': user['following'],
         'followerCount': user['followerCount'],
         'createdAt': user.get('createdAt')
@@ -93,14 +100,15 @@ def get_user_info():
 @app.route('/api/users_feed')
 def get_users_feed():
     """Return a paginated feed of users (excluding the current user)."""
-    user_id = request.cookies.get('userID')
-    if not user_id:
-        return jsonify({'error': 'No user ID provided'}), 404
+    private_user_id = request.cookies.get('privateUserID')
+    if not private_user_id:
+        return jsonify({'error': 'No user ID provided in request'}), 404
 
-    # Retrieve user doc
-    user_doc = USERS_COLLECTION.document(user_id).get()
+    # Retrieve user doc and extract public_user_id
+    user_doc = USERS_COLLECTION.document(private_user_id).get()
     if not user_doc.exists:
         return jsonify({'error': 'User not found'}), 404
+    feed_public_user_id = user_doc.to_dict().get('publicUserID')
 
     # Pagination parameters
     page = int(request.args.get('page', 1))
@@ -108,24 +116,26 @@ def get_users_feed():
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
 
-    # Get userList from Firestore
+    # Get userList from Firestore (a list of the public user IDs)
     user_list_doc = USERLIST_DOC.get()
     user_list = user_list_doc.to_dict().get('userList', []) if user_list_doc.exists else []
 
     # Exclude current user and get the requested page
-    filtered_user_ids = [uid for uid in user_list if uid != user_id]
+    filtered_user_ids = [uid for uid in user_list if uid != feed_public_user_id]
     paged_user_ids = filtered_user_ids[start_idx:end_idx]  # Python slicing is safe
     has_more = end_idx < len(filtered_user_ids)
 
     # Build the feed with user info
     feed_users = []
     for uid in paged_user_ids:
-        u_doc = USERS_COLLECTION.document(uid).get()
+        u_query = USERS_COLLECTION.where(filter=FieldFilter('publicUserID', '==', uid)).limit(1).get()
+        u_doc = u_query[0] if u_query else None
         if u_doc.exists:
             u = u_doc.to_dict()
             feed_users.append({
                 'nickname': u['nickname'],
-                'userID': u['userID'],
+                #'privateUserID': u['privateUserID'], THIS SHOULD NOT BE SENT BACK TO THE CLIENT AS IT EXPOSES ALL PRIVATE USER IDS!
+                'publicUserID': u['publicUserID'],
                 'origin': u['origin'],
                 'isFollowing': uid in user_doc.to_dict().get('following', []),
                 'followerCount':  u['followerCount'],
@@ -141,38 +151,38 @@ def get_users_feed():
 @app.route('/api/follow_user', methods=['POST'])
 def follow_user():
     """Add a user to the current user's following list and update the follower count atomically."""
-    user_id = request.cookies.get('userID')
-    if not user_id:
-        return jsonify({'error': 'User not found'}), 404
+    private_user_id = request.cookies.get('privateUserID')
+    if not private_user_id:
+        return jsonify({'error': 'Following user id not found in request'}), 404
 
     data = request.get_json()
-    target_user_id = data.get('targetUserID')
-    if not target_user_id:
-        return jsonify({'error': 'Target user not found'}), 404
-    if target_user_id == user_id:
-        return jsonify({'error': 'Cannot follow yourself'}), 400
+    target_public_user_id = data.get('targetPublicUserID')
+    if not target_public_user_id:
+        return jsonify({'error': 'Target user not found in request'}), 404
 
     transaction = db.transaction()
 
     # Transactionally check the users exist and update the following list
     @firestore.transactional
-    def follow_user_transaction(transaction, user_id, target_user_id):
+    def follow_user_transaction(transaction, private_user_id, target_public_user_id):
 
         # Check both users exist
-        user_doc_ref = USERS_COLLECTION.document(user_id)
+        user_doc_ref = USERS_COLLECTION.document(private_user_id)
         user_doc = user_doc_ref.get(transaction=transaction)
         if not user_doc.exists:
-            return {'error': 'User not found'}, 404
-        target_user_doc_ref = USERS_COLLECTION.document(target_user_id)
-        target_user_doc = target_user_doc_ref.get(transaction=transaction)
+            return {'error': 'Following user not found'}, 404
+        target_user_query = USERS_COLLECTION.where(filter=FieldFilter('publicUserID', '==', target_public_user_id)).limit(1).get(transaction=transaction)
+        target_user_doc = target_user_query[0] if target_user_query else None
+        target_private_user_id = target_user_doc.to_dict()['privateUserID']
+        target_user_doc_ref = USERS_COLLECTION.document(target_private_user_id)
         if not target_user_doc.exists:
             return {'error': 'Target user not found'}, 404
 
         # Update following list
         user_data = user_doc.to_dict()
-        if target_user_id in user_data['following']:
+        if target_public_user_id in user_data['following']:
             return {'error': 'Already following user'}, 400
-        user_data['following'].append(target_user_id)
+        user_data['following'].append(target_public_user_id)
         transaction.update(user_doc_ref, {'following': user_data['following']})
 
         # Update follower count
@@ -181,14 +191,13 @@ def follow_user():
 
         return {'success': True}, 200
 
-    result, status = follow_user_transaction(transaction, user_id, target_user_id)
+    result, status = follow_user_transaction(transaction, private_user_id, target_public_user_id)
     return jsonify(result), status
 
 if __name__ == '__main__':
     app.run(debug=True)
 
 #TODO: 
-    # Improve the UI... it looks too compressed
     # User pps - can these be random Avatars? 
-    # Make the loading symbols cleaner 
+    # See TODOs above
 

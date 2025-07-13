@@ -14,22 +14,55 @@
             align-items: center;
             justify-content: center;
         }
-        #feed { margin-top: 1rem; }
-        #users-feed {
-            height: 350px;
+        .main-card {
+            width: 100%;
+            max-width: 400px;
+            height: 600px;
             display: flex;
             flex-direction: column;
         }
+        .main-card .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #app {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #create-user-form {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #feed {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        #users-feed {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
         .users-list {
-            flex: 1 1 auto;
+            flex: 1;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-        }
-        .users-feed-footer {
-            flex-shrink: 0;
-            background: white;
-            padding-top: 0.5rem;
         }
         .user-card { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #eee; }
         #cookie-notice { background: #f9f9a9; padding: 1rem; margin-bottom: 1rem; border-radius: 5px; }
@@ -51,7 +84,7 @@
 </head>
 <body>
     <div class="container d-flex flex-column align-items-center justify-content-center min-vh-100">
-        <div class="card p-4 shadow rounded" style="width: 100%; max-width: 400px;">
+        <div class="card p-4 shadow rounded main-card">
             <h4 class="text-center mb-3">Followme!</h4>
             <div class="card-body p-0" id="app">
 
@@ -81,9 +114,6 @@
                         <div id="users-feed">
                             <div class="users-list" aria-live="polite">
                                 <div id="user-cards-container"></div>
-                            </div>
-                            <div class="users-feed-footer">
-                                <button id="load-more" class="btn btn-outline-secondary w-100 mt-3" style="display:none;">Load More</button>
                                 <div id="load-more-spinner" style="display:none; text-align:center; margin: 1rem 0;">
                                     <div class="loader" role="status" aria-label="Loading more users"></div>
                                 </div>
