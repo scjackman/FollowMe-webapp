@@ -149,7 +149,7 @@ function renderUsersFeed(users, clearExisting = false) {
             </div>
             <button 
                 class="btn btn-outline-secondary btn-sm follow-btn" 
-                data-user-id="${user.publicUserID}"
+                data-public-user-id="${user.publicUserID}"
                 ${user.isFollowing ? 'disabled' : ''}
             >
                 ${user.isFollowing ? 'Following' : 'Follow'}
@@ -171,7 +171,7 @@ function renderUsersFeed(users, clearExisting = false) {
 function addFollowButtonListeners() {
     document.querySelectorAll('.follow-btn').forEach(button => {
         button.addEventListener('click', async (e) => {
-            const targetUserID = e.target.dataset.userId;
+            const targetPublicUserID = e.target.dataset.publicUserId;
             if (e.target.disabled) return;
 
             // Find the follower count element in the same user card
@@ -200,7 +200,7 @@ function addFollowButtonListeners() {
                 const response = await fetch('/api/follow_user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ targetPublicUserID: targetUserID })
+                    body: JSON.stringify({ targetPublicUserID: targetPublicUserID })
                 });
 
                 if (!response.ok) {

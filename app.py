@@ -150,7 +150,7 @@ def get_users_feed():
 
 @app.route('/api/follow_user', methods=['POST'])
 def follow_user():
-    """Add a user to the current user's following list and update the follower count atomically."""
+    """Add a user to the current user's following list (using their publicID) and update the follower count atomically."""
     private_user_id = request.cookies.get('privateUserID')
     if not private_user_id:
         return jsonify({'error': 'Following user id not found in request'}), 404
@@ -171,9 +171,10 @@ def follow_user():
         user_doc = user_doc_ref.get(transaction=transaction)
         if not user_doc.exists:
             return {'error': 'Following user not found'}, 404
+
         target_user_query = USERS_COLLECTION.where(filter=FieldFilter('publicUserID', '==', target_public_user_id)).limit(1).get(transaction=transaction)
         target_user_doc = target_user_query[0] if target_user_query else None
-        target_private_user_id = target_user_doc.to_dict()['privateUserID']
+        target_private_user_id = target_user_doc.to_dict()['privateUserID'] # Needed to read and write back to target users data
         target_user_doc_ref = USERS_COLLECTION.document(target_private_user_id)
         if not target_user_doc.exists:
             return {'error': 'Target user not found'}, 404
