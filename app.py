@@ -38,6 +38,10 @@ def create_user():
     origin = data.get('origin', '').strip()
     if not nickname or not origin:
         return jsonify({'error': 'Nickname and origin are required.'}), 400
+    if len(nickname) > 32:
+        return jsonify({'error': f'Nickname must be at most 32 characters.'}), 400
+    if len(origin) > 64:
+        return jsonify({'error': f'Origin must be at most 64 characters.'}), 400
 
     private_user_id = str(uuid.uuid4())
     public_user_id = str(uuid.uuid4())

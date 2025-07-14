@@ -127,37 +127,22 @@ function renderUsersFeed(users, clearExisting = false) {
         }
     }
     
+    const template = document.getElementById('user-card-template');
     users.forEach(user => {
-        const userCard = document.createElement('div');
-        let formattedTimeStamp = formatTimestampUserCreatedAt(user)
-        
-        userCard.className = 'user-card';
-        userCard.innerHTML = `
-            <div style="display: flex; align-items: center; flex: 1;">
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #888; margin-right: 1rem; flex-shrink: 0;">
-                    <span style="user-select: none;">👤</span>
-                </div>
-                <div style="display: flex; flex-direction: column;">
-                    <strong>${user.nickname}</strong>
-                    <small>
-                        ${user.origin || 'Unknown origin'}
-                        <span style="font-size: 0.8em;">•</span>
-                        ${formattedTimeStamp}
-                    </small>
-                    <small>Followers: ${user.followerCount}</small>
-                </div>
-            </div>
-            <button 
-                class="btn btn-outline-secondary btn-sm follow-btn" 
-                data-public-user-id="${user.publicUserID}"
-                style="margin-right: 14px;"
-                ${user.isFollowing ? 'disabled' : ''}
-            >
-                ${user.isFollowing ? 'Following' : 'Follow'}
-            </button>
-        `;
-        
-        // Append to the user cards container instead of the feed container
+        let formattedTimeStamp = formatTimestampUserCreatedAt(user);
+        // Clone the template
+        const userCardFragment = template.content.cloneNode(true);
+        const userCard = userCardFragment.querySelector('.user-card');
+        // Set user data safely
+        userCard.querySelector('.nickname').textContent = user.nickname;
+        userCard.querySelector('.origin-date').textContent = (user.origin || 'Unknown origin') + ' • ' + formattedTimeStamp;
+        userCard.querySelector('.followers').textContent = `Followers: ${user.followerCount}`;
+        const followBtn = userCard.querySelector('.follow-btn');
+        followBtn.dataset.publicUserId = user.publicUserID;
+        followBtn.textContent = user.isFollowing ? 'Following' : 'Follow';
+        if (user.isFollowing) followBtn.disabled = true;
+
+        // Append to the user cards container
         const userCardsContainer = document.getElementById('user-cards-container');
         if (userCardsContainer) {
             userCardsContainer.appendChild(userCard);
