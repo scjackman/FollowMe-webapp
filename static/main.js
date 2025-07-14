@@ -150,6 +150,7 @@ function renderUsersFeed(users, clearExisting = false) {
             <button 
                 class="btn btn-outline-secondary btn-sm follow-btn" 
                 data-public-user-id="${user.publicUserID}"
+                style="margin-right: 14px;"
                 ${user.isFollowing ? 'disabled' : ''}
             >
                 ${user.isFollowing ? 'Following' : 'Follow'}
