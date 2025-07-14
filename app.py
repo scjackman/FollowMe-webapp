@@ -1,13 +1,17 @@
 from flask import Flask, render_template, request, jsonify, make_response
-import uuid
 
 from firebase_config import initialise_firebase, get_firestore_client
 from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from datetime import datetime
+import uuid
+import os
 
+# Initialise app and apply config suitable to environment
 app = Flask(__name__)
+env_config = os.getenv("APP_SETTINGS", "config.DevelopmentConfig")
+app.config.from_object(env_config)
 
 # Initialize Firebase on app startup
 initialise_firebase()
@@ -201,7 +205,3 @@ def follow_user():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-#TODO: 
-    # User pps - can these be random Avatars? 
-
