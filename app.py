@@ -18,6 +18,7 @@ initialise_firebase()
 db = get_firestore_client()
 
 # --- Firestore structure ---
+
 # Users are stored at users/[privateUserID]
 USERS_COLLECTION = db.collection('users')
 # The user list is stored at users/userList (as a document with a userList array - a list of public IDs)
@@ -203,5 +204,3 @@ def follow_user():
     result, status = follow_user_transaction(transaction, private_user_id, target_public_user_id)
     return jsonify(result), status
 
-if __name__ == '__main__':
-    app.run(debug=True)
