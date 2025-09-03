@@ -3,7 +3,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 def initialise_firebase():
-    """Initialize Firebase Admin SDK with necessary credentials"""
+    """Initialize Firebase Admin SDK with credentials"""
     try:
         # Check if Firebase app is already initialized
         if not firebase_admin._apps:
@@ -11,7 +11,7 @@ def initialise_firebase():
             # Get the path to the service account key file
             cred = credentials.Certificate("serviceAccountKey.json")
             
-            # Initialize Firebase app 
+            # Initialise Firebase app 
             firebase_admin.initialize_app(cred)
             
             print("Firebase initialized successfully")

@@ -6,6 +6,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 
 from datetime import datetime
 import uuid
+import re
 import os
 
 # Initialise app and apply config suitable to environment
@@ -28,6 +29,11 @@ USERLIST_DOC = db.collection('users').document('userList')
 if not USERLIST_DOC.get().exists:
     USERLIST_DOC.set({'userList': []})
 
+def sanitise_input(text, max_length):
+    """Sanitise input by removing HTML tags and limiting length."""
+    clean_text = re.sub(r'[<>&"\']', '', text)  # Remove potentially dangerous characters
+    return clean_text[:max_length]  # Limit to max_length
+
 # --- Routes ---
 
 @app.route('/')
@@ -43,14 +49,16 @@ def create_user():
     origin = data.get('origin', '').strip()
     if not nickname or not origin:
         return jsonify({'error': 'Nickname and origin are required.'}), 400
-    if len(nickname) > 32:
-        return jsonify({'error': f'Nickname must be at most 32 characters.'}), 400
-    if len(origin) > 64:
-        return jsonify({'error': f'Origin must be at most 64 characters.'}), 400
+    
+    # Sanitise inputs
+    nickname = sanitise_input(nickname, 32)
+    origin = sanitise_input(origin, 64)
 
+    # Create user IDs
     private_user_id = str(uuid.uuid4())
     public_user_id = str(uuid.uuid4())
 
+    # Create user object
     user_obj = {
         'nickname': nickname,
         'origin': origin,
@@ -58,12 +66,10 @@ def create_user():
         'publicUserID': public_user_id,
         'following': [],
         'followerCount': 0,
-        'createdAt': datetime.utcnow().isoformat() + 'Z'
+        'createdAt': datetime.now().isoformat() + 'Z'
     }
 
-    transaction = db.transaction()
-
-    #Add user doc and update userList atomically
+    # Function to add new user doc and update userList in firestore atomically
     @firestore.transactional
     def create_user_transaction(transaction, private_user_id, public_user_id, user_obj):
 
@@ -77,6 +83,8 @@ def create_user():
         user_doc_ref = USERS_COLLECTION.document(private_user_id)
         transaction.set(user_doc_ref, user_obj)
 
+    # Run the atomic transaction
+    transaction = db.transaction()
     create_user_transaction(transaction, private_user_id, public_user_id, user_obj)
 
     # Set privateUserID cookie for client
@@ -84,9 +92,13 @@ def create_user():
     resp.set_cookie('privateUserID', private_user_id, max_age=60*60*24*365)  # 1 year expiration
     return resp
 
+    # TODO handle exceptions and report errors to client
+
 @app.route('/api/user_info')
 def get_user_info():
     """Return info for the current user (from cookie)."""
+
+    # Get privateUserID from cookie embedded in request
     private_user_id = request.cookies.get('privateUserID')
     if not private_user_id:
         return jsonify({'error': 'User not found'}), 404
@@ -125,14 +137,16 @@ def get_users_feed():
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
 
-    # Get userList from Firestore (a list of the public user IDs)
+    # Get userList from Firestore (a list of all public user IDs)
     user_list_doc = USERLIST_DOC.get()
     user_list = user_list_doc.to_dict().get('userList', []) if user_list_doc.exists else []
 
     # Exclude current user and get the requested page
     filtered_user_ids = [uid for uid in user_list if uid != feed_public_user_id]
-    paged_user_ids = filtered_user_ids[start_idx:end_idx]  # Python slicing is safe
-    has_more = end_idx < len(filtered_user_ids)
+    paged_user_ids = filtered_user_ids[start_idx:end_idx]  # NOTE Python slicing is safe - won't fail if out of range
+
+    # Determine if more pages to load - this is returned to client
+    has_more = end_idx < len(filtered_user_ids) 
 
     # Build the feed with user info
     feed_users = []
@@ -148,7 +162,7 @@ def get_users_feed():
                 'origin': u['origin'],
                 'isFollowing': uid in user_doc.to_dict().get('following', []),
                 'followerCount':  u['followerCount'],
-                'createdAt': u.get('createdAt')
+                'createdAt': u['createdAt']
             })
 
     return jsonify({
@@ -160,18 +174,18 @@ def get_users_feed():
 @app.route('/api/follow_user', methods=['POST'])
 def follow_user():
     """Add a user to the current user's following list (using their publicID) and update the follower count atomically."""
+    # Get privateID of follower from request
     private_user_id = request.cookies.get('privateUserID')
     if not private_user_id:
         return jsonify({'error': 'Following user id not found in request'}), 404
 
+    # Get target public ID from request
     data = request.get_json()
     target_public_user_id = data.get('targetPublicUserID')
     if not target_public_user_id:
         return jsonify({'error': 'Target user not found in request'}), 404
 
-    transaction = db.transaction()
-
-    # Transactionally check the users exist and update the following list
+    # Function to atomically check the users exist and update the following list
     @firestore.transactional
     def follow_user_transaction(transaction, private_user_id, target_public_user_id):
 
@@ -188,19 +202,21 @@ def follow_user():
         if not target_user_doc.exists:
             return {'error': 'Target user not found'}, 404
 
-        # Update following list
+        # Update following list if not already following
         user_data = user_doc.to_dict()
         if target_public_user_id in user_data['following']:
             return {'error': 'Already following user'}, 400
         user_data['following'].append(target_public_user_id)
         transaction.update(user_doc_ref, {'following': user_data['following']})
 
-        # Update follower count
+        # Update follower count on target user
         target_user_data = target_user_doc.to_dict()
         transaction.update(target_user_doc_ref, {'followerCount': target_user_data['followerCount'] + 1})
 
         return {'success': True}, 200
-
+    
+    # Run the atomic transaction
+    transaction = db.transaction()
     result, status = follow_user_transaction(transaction, private_user_id, target_public_user_id)
     return jsonify(result), status
 
