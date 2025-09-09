@@ -30,7 +30,7 @@ if not USERLIST_DOC.get().exists:
     USERLIST_DOC.set({'userList': []})
 
 def sanitise_input(text, max_length):
-    """Sanitise input by removing HTML tags and limiting length."""
+    """Function to sanitise text input by removing HTML tags and limiting length."""
     clean_text = re.sub(r'[<>&"\']', '', text)  # Remove potentially dangerous characters
     return clean_text[:max_length]  # Limit to max_length
 
@@ -45,6 +45,7 @@ def index():
 def create_user():
     """Create a new user and add to Firestore and userList atomically."""
     data = request.get_json()
+    print(data)
     nickname = data.get('nickname', '').strip()
     origin = data.get('origin', '').strip()
     if not nickname or not origin:
@@ -148,7 +149,7 @@ def get_users_feed():
     # Determine if more pages to load - this is returned to client
     has_more = end_idx < len(filtered_user_ids) 
 
-    # Build the feed with user info
+    # Build the feed with user info and return to client
     feed_users = []
     for uid in paged_user_ids:
         u_query = USERS_COLLECTION.where(filter=FieldFilter('publicUserID', '==', uid)).limit(1).get()
