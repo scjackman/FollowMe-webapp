@@ -1,7 +1,6 @@
 """
-Unit tests for utility functions.
+Base unit tests for utility functions.
 """
-import pytest
 from app import sanitise_input
 
 
