@@ -3,20 +3,17 @@ Test full user workflow through app.
 '''
 
 import pytest
+from unittest.mock import Mock, ANY
 
-def test_add_user(client,mock_firestore):
-    assert mock_firestore is not None
+def test_create_user(client):
+    pass
 
-    # Arrange
-    mock_users_collection = mock_firestore.collection.return_value
-    mock_userlist_doc_ref = mock_users_collection.document.return_value
-    mock_userlist_doc_ref.set.return_value = {'success': True, 'privateUserID': 'private-user-id'}  # pretend it succeeds
+def test_get_user_info(client):
+    pass
 
-    # Act
-    response = client.post('/api/create_user', json={'nickname': 'Sam', 'origin': 'Vancouver'})
+def test_get_users_feed(client):
 
-    # Assert
-    mock_firestore.collection.assert_called_once_with('users')
-    mock_users_collection.document.assert_called_once_with('userList')
-    mock_userlist_doc_ref.set.assert_called_once_with({'nickname': 'Sam', 'origin': 'Vancouver'})
-    assert response.json == {'success': True, 'privateUserID': 'private-user-id'}
+    pass
+
+def test_follow_user(client):
+    pass

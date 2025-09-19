@@ -77,7 +77,7 @@ def create_user():
         # Get and update userList
         user_list_doc = USERLIST_DOC.get(transaction=transaction) # Reads must happen before writes
         user_list = user_list_doc.to_dict().get('userList', []) if user_list_doc.exists else [] 
-        user_list.append(public_user_id)
+        user_list.append(public_user_id)        
         transaction.set(USERLIST_DOC, {'userList': user_list})
 
         # Add user doc
